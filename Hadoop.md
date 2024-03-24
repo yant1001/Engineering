@@ -107,8 +107,297 @@
    - 데이터 시각화, 통계 분석, ML, DL 등의 기술을 활용한다.
 5. 데이터 출력 레이어
    - 예측 모델을 바탕으로 데이터 시각화와 보고서 작성 등이 수행된다.
-   - 분석에 대한 결과물은 태블로, 파워 BI, 아마존 퀵사이트 등으로 나타내며, 시각화 및 보고서 자료를 의사 결정에 활용하게 된다.
+   - 분석에 대한 결과물은 태블로, 파워 BI, 아마존 퀵사이트 등으로 나타내며, 시각화 및 보고서 자료를 의사 결정에 활용하게 된다. +
   
 
 # Hadoop
+## 구조
+- 클러스터
+  - 여러 대가 연결되어 하나의 시스템처럼 동작하는 컴퓨터들의 집합
+- Master/Worker 아키텍쳐
+  - 하둡의 대표 아키텍쳐
+  - 관리자의 역할을 하는 Master 노드, 실제 데이터에 대한 처리 업무를 담당하는 Worker 노드로 이루어져 있다. (사장님과 직원 관계)
+  - 클라이언트(고객)가 워커(직원)에게 직접 요청할 필요 없이, 클라이언트(고각)가 마스터(사장)에게 요청하고, 마스터(사장)가 워커(직원)에게 명령을 내리는 구조
+  - 마스터 노드는 워커 노드의 메타데이터를 가지고 있고 이를 토대로 클라이언트 요청을 수행할 수 있는 데이터를 가진 워커 노드에게 작업을 명령한다. (메타데이터: 데이터를 설명하기 위한 데이터)
+  - 클라이언트는 마스터하고만 통신하면 되기 때문에 인터페이스가 간단해지고, 워커(직원, 실무자)들의 주소를 직접 알 필요가 없게 된다.
 
+## 변천사
+### 하둡1
+- 하둡은 쉽게 말해 디렉토리에 파일을 삽입, 삭제, 조회하는 File System과 유사한 형태이다.
+- 클라이언트는 네임노드하고만 소통한다. 클라이언트가 하둡의 파일을 읽고 쓸 때 네임노드에 요청해서 처리하게 된다.
+- 클라이언트의 요청을 받은 네임노드는 워커노드에게 작업내역을 지시한다.
+- 실제 데이터는 네임노드가 아닌 워커노드에 존재한다.
+- 이 때 워커의 작업 현황을 파악하여 적절하게 일을 분배시켜주는 것을 스케쥴링(계획)이라고 하며, 이 역할을 JobTracker가 수행한다.
+- JobTracker는 전체적인 Job의 작업을 계획 및 모니터링하며, Job에 어떤 Task가 있는지 분석하고 체크한 후 쪼개진 Task들을 워커노드에게 분배한다.
+- 워커노드에 위치한 TaskTracker에서 전달받은 Task 간 우선순위를 정하고 스케쥴링한다.
+  - Task: 예를들어, SQL 쿼리를 Job이라고 하며 쿼리 안에서 일어나는 연산들을 Task라고 지칭한다.
+- 하둡1의 가장 큰 문제점
+  - 네임노드의 단일 장애 지점 (SPOF: Single Point Of Failure)
+    - 네임노드에 장애가 발생하면 일부 데이터가 유실되는 현상
+    - 네임노드는 한개만 활성화되기 때문에 네임노드가 망가지면 클라이언트 요청을 처리할 서버가 사라진다.
+    - Secondary NameNode가 있지만, 둘 사이의 시간 차이가 존재한다.
+  - JobTracker 부하
+    - 클러스터의 모든 작업을 관리하므로 부하가 일어나기 쉽다.
+  - 맵리듀스 이외의 작업은 수행 불가능
+    - 맵리듀스: 하둡의 파일 저장소라고 할 수 있는 HDFS 내의 데이터를 처리하는 모듈
+    - 과거 데이터 분석가들은 SQL만 할 수 있는 경우가 대부분이었는데, 하둡1에서는 맵리듀스 프로그래밍만 지원했기 때문에 분석가들이 코딩을 하거나, 개발자가 쿼리를 할 줄 알아야 했다.
+- 네임노드는 1대만 있어야 하는데 하는 일이 많기 때문에 금방 과부화가 올 위험이 있었다. 이걸 보완하여 2, 3년 만에 하둡2가 등장한다.
+
+### 하둡2
+- 네임노드를 Active와 Standby로 관리하여, Active 네임노드가 다운되면 Standby 네임노드가 작동할 수 있게 하였다.
+- Active와 Standby 네임노드 사이에 JournalNode까지 연결시켜 조금 더 견고한 네임노드 구조가 완성되었다.
+- 하둡1의 JobTracker와 TaskTracker가 사라지고 ResourceManager와 NodeManager로 교체되었다.
+  - ResourceManager: YARN이라고 하며, 워커노드 작업을 스케쥴링 해주는 네임노드의 비서 역할이 분리되었다. 리소스매니저가 등장함으로써 네임노드가 훨씬 여유로워졌기 때문에 하둡1보다 훨씬 많은 컴퓨터를 추가할 수 있게 되었다.(~수만대) 워커 노드들이 최대한 효율적으로 데이터를 처리할 수 있도록 한다. 노드매니저는 주기적으로 리소스매니저에게 상태를 전송한다. (하트비트 패킷)
+  - NodeManager: 데이터노드의 있는 노드매니저 안에는 Container와 Application Master가 있다. 이는 맵리듀스뿐만 아니라 다양한 분산 처리 어플리케이션을 사용할 수 있도록 지원한다.
+- 일례로 카카오 데이터센터 화재 사건을 통해 구조를 이해할 수 있다. 
+  - SK 사옥이 화재 => 카카오톡 서버 마비 => 서울 서버(Active NameNode)에 불이 났으니 스탠바이된 지방 서버(Active NameNode)가 활성화되어야 하는데 이에 실패 => 데이터 이중화에는 성공했으나 서버 이중화에는 실패했다고 입장 발표
+- 하둡2로 인해 Scale-Out일 때 훨씬 비용 절감이 가능하다는 것이 증명되었다.
+- YARN의 분리와 Standby NameNode의 추가가 하둡2의 혁신적인 변혁이었다.
+- Application Master (/DataNode/NodeManager/Container&ApplicationMaster): 하둡이 맵리듀스 이외의 다른 빅데이터 도구도 지원받을 수 있도록 해주었다. (하이브, 스파크 등) 이로 인해 빅데이터 전문가들에게 자바 프로그래밍이 필수적 요소가 아니게 되었다.
+  - 다만 하둡 자체는 맵리듀스로만 작동되기 때문에 하이브 등으로 작업하더라도 결국 맵리듀스로 프로그래밍된다.
+
+### 하둡3
+- 하둡2와 동일한 구조에 기능이 추가된 업데이트 버전이다.
+- Erasure Coding 지원
+  - 데이터 복제본의 사이즈를 줄여 용량의 효율적인 관리 지원
+- Java 8
+  - 하둡2는 Java 1.7을 지원했으나 하둡3부터는 Java 1.8 이상을 지원
+  - Java 1.7까지는 객체 지향 프로그래밍만 지원하였다.
+  - 객체 지향 프로그래밍은 마치 레고처럼 각각의 클래스로 객체를 만들어서 필요한 부분을 조립하는 방식이다. 객체 지향 프로그래밍은 객체가 없이 기능만 있어도 되는 경우라고 하더라도 반드시 객체가 필요하다는 단점이 있다.
+  - Java 1.8부터는 함수형 프로그래밍으로, lambda 식이 추가되었다. 함수형 프로그래밍은 데이터 처리에서 필수적이다.
+- NameNode 이중화 기능 강화
+  - 네임노드 이중화를 2개까지만 지원했으나, 여러 개를 동시에 이중화할 수 있도록 지원하기 시작
+
+## 실습
+### 하둡 설치
+`wget https://dlcdn.apache.org/hadoop/common/hadoop-3.2.4/hadoop-3.2.4.tar.gz` pass (wget == web get의 약어)
+
+`tar xvfz hadoop-3.2.4.tar.gz` 하둡 설치
+
+`cd ~/.bashrc` vi editor 열기
+
+```python
+# HADOOP_HOME
+export HADOOP_HOME=/home/ubuntu/hadoop-3.2.4
+export PATH=$PATH:$HADOOP_HOME/bin
+```
+
+`esc + :wq` 환경변수 생성 확인 후 나오기
+
+`source ~/.bashrc` 환경변수 불러오기
+
+`echo $HADOOP_HOME` 잘 생성되었는지 확인 (출력)
+
+#### ssh 로그인 설정
+
+`cat ~/.ssh/authorized_keys` authorized_keys (key box) 확인
+
+`ssh-keygen -t rsa -P '' -f ~/.ssh/id_rsa` pass
+
+`cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys` 퍼블릭키(pub)를 키박스(authorized_keys) 추가
+
+`chmod 0600 ~/.ssh/authorized_keys` pass
+
+`cat ~/.ssh/authorized_keys` authorized_keys (key box) 잘 들어갔는지 확인
+
+`ls ~/.ssh/`
+
+`ssh [localhost](http://localhost)` 로컬호스트로 로그인
+
+`w` 접속 확인
+
+`exit` 로컬호스트 로그아웃
+
+`w` 접속 확인
+
+### 하둡 설정 (core-site/hdfs-site/yarn-site/mapred-site)
+
+#### core-site.xml
+
+`vim $HADOOP_HOME/etc/hadoop/core-site.xml` core-site.xml 열기
+
+`i` 인서트 모드로 변경
+
+```python
+<configuration>
+    **<property>
+        <name>fs.defaultFS</name>
+        <value>hdfs://$your_namenode_host:9000</value>
+    </property>**
+</configuration>
+```
+
+`esc + :wq`
+
+#### hdfs-site.xml
+
+`vi $HADOOP_HOME/etc/hadoop/hdfs-site.xml`  hdfs-site.xml 파일열기
+
+`i` 인서트 모드
+
+```python
+    **<property>
+        <name>dfs.replication</name> 
+        <value>1</value>
+    </property>
+    <property>
+        <name>dfs.namenode.name.dir</name>
+        <value>/path/to/hadoop-3.2.4/dfs/name</value>
+    </property>
+    <property>
+        <name>dfs.datanode.data.dir</name>
+        <value>/path/to/hadoop-3.2.4/dfs/data</value>
+    </property>
+	  <property>
+				<name>dfs.namenode.http-address</name>
+				<value>$your_hdfs_host:9870</value>
+		</property>**
+```
+
+`esc + :wq`
+
+- 네임노드, 데이터노드를 위한 디렉토리 생성
+
+`mkdir -p $HADOOP_HOME/dfs/name` 네임노드를 위한 디렉토리 생성
+
+`mkdir -p $HADOOP_HOME/dfs/data` 데이터노드를 위한 디렉토리 생성
+
+`ls $HADOOP_HOME/dfs` name과 data 디렉토리 생성 확인
+
+#### yarn-site.xml
+
+`vi $HADOOP_HOME/etc/hadoop/yarn-site.xml` yarn-site.xml 파일 열기
+
+`i`
+
+```python
+    **<property>
+        <name>yarn.nodemanager.aux-services</name>
+        <value>mapreduce_shuffle</value>
+    </property>
+    <property>
+        <name>yarn.nodemanager.env-whitelist</name>
+        <value>JAVA_HOME,HADOOP_COMMON_HOME,HADOOP_HDFS_HOME,HADOOP_CONF_DIR,CLASSPATH_PREPEND_DISTCACHE,HADOOP_YARN_HOME,HADOOP_HOME,PATH,LANG,TZ,HADOOP_MAPRED_HOME</value>
+    </property>
+		<property>
+				<name>yarn.resourcemanager.webapp.address</name>
+				<value>$your_nodemanager_host:8088</value>
+		</property>
+		<property>
+				<name>yarn.nodemanager.webapp.address</name>
+				<value>$your_nodemanager_host:8042</value>
+		</property>**
+```
+
+`esc + :wq`
+
+#### mapred-site.xml
+
+`vi $HADOOP_HOME/etc/hadoop/mapred-site.xml` mapred-site.xml 파일열기 
+
+```python
+<configuration>
+    **<property>
+        <name>mapreduce.framework.name</name>
+        <value>yarn</value>
+    </property>
+    <property>
+        <name>mapreduce.application.classpath</name>
+        <value>$HADOOP_MAPRED_HOME/share/hadoop/mapreduce/*:$HADOOP_MAPRED_HOME/share/hadoop/mapreduce/lib/*</value>
+    </property>
+		<property>
+				<name>yarn.resourcemanager.webapp.address</name>
+				<value>0.0.0.0:8088</value>
+		</property>
+		<property>
+        <name>mapreduce.jobhistory.webapp.address</name>
+        <value>0.0.0.0:19888</value>
+    </property>**
+</configuration>
+```
+
+`esc + :wq` 
+
+- hadoop-env.sh
+
+`vim $HADOOP_HOME/etc/hadoop/[hadoop-env.sh](http://hadoop-env.sh)` hadoop-env.sh 파일열기 
+
+`shift + G` 스크롤 맨 아래로 내리기
+
+`JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/jre` 맨 아래에 삽입
+
+`esc + :wq` 
+
+#### HDFS 실행
+
+`hdfs namenode -format` HDFS 실행 전 네임노드 포맷 (반드시 처음 시작하고 1회만 포맷)
+
+- 포맷은 디스크 초기화에 해당한다. 하둡의 DFS 사용하기 전 필요한 환경을 구성하기 위한 필요작업으로 생각하면 된다.
+
+`$HADOOP_HOME/sbin/start-dfs.sh` 네임노드 실행
+
+`jps` Jps / DataNode / NameNode / SecondaryNameNode 정상 실행 확인 
+
+#### YARN 실행
+
+`$HADOOP_HOME/sbin/start-yarn.sh` YARN (리소스 매니저) 실행
+
+`jps` ResourceManager / NodeManager 추가적으로 2개 정상 실행 확인 
+
+#### JobHistoryServer 시작
+
+`mapred --daemon start historyserver` jobhistoryserver 시작
+
+`jps` JobHistoryServer 추가적으로 1개 정상 실행 확인 (총 7개)
+
+### 맵리듀스 예제 실행
+
+`hadoop jar $HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-3.2.4.jar pi 16 10000` 맵리듀스 예제 실행
+
+- 실행 최종 결과는 [리소스 매니저 web(퍼블릭IPv4DNS) FINISHED 탭](http://<퍼블릭IPv4DNS>:8088/cluster/apps/FINISHED)에서 확인 가능
+
+**다끝나면 꼭 start⇒stop으로 바꿔서 종료하고 터미널 꺼야 한다.
+
+# YARN
+- 하둡2부터 도입된 리소스매니저
+- 맵리듀스1
+  - 마스터 역할은 JobTracker가 수행하고 워커의 역할은 TaskTracker가 수행했다. 클라이언트가 Job을 jobtracker에게 제출하면 jobtracker는 자원을 할당하여 tasktracker가 작업을 수행할 수 있도록 해준다. tasktracker는 task를 실행하고 작업 상황을 jobtracker에게 전달한다.
+  - 클라이언트가 작업 요청을 하게 되면 JobTracker가 작업 할당을 하게 된다. 워커들에게 할당된 작업을 토대로 스케쥴링이 이루어지는데, 이떼 jobtracker의 역할이 과중되어 워커노드를 늘리는 클러스터 확장에 제한을 받게 된다는 단점이 있었다.
+- YARN (Yet Another Resource Negotiator) 등장
+  - Negotiator 협상가의 등장
+  - YARN이 등장, 즉 리소스매니저 노드가 따로 분리되면서 jobtracker가 하던 자원 관리는 ResourceManager, 작업 관리 책임은 ApplicationMaster가 하게되어 마스터노드의 부담이 덜어졌다.
+  - resource manager는 자원 관리, application master는 작업 관리(실행할 작업 내용 관리)를 맡게 되었다.
+  - 기존의 맵리듀스에서는 자원(CPU, 메모리, 디스크, 네트워크)을 슬롯으로 관리하였는데, resource manager는 자원을 리소스 컨테이너라는 단위로 추상화하여 배분하여 관리하였다.
+    - 마치 창고에 호미를 여럿 두고 작업에 필요할 때마다 호미를 가져갈 수 있는 것처럼 컨테이너 시스템으로 바뀌어, 컨테이너를 통해 클러스터 이용률이 개선되었다.
+## 구조
+- 리소스매니저는 모든 클러스터의 자원을 중재한다.
+- 플러그인 가능한 스케쥴러와 클러스터 사용자의 Job을 관리하는 어플리케이션 매니저로 구성되어 있다.
+- Scheduler
+  - 제약에 대한 다양한 어플리케이션에 자원을 할당한다.
+  - 실시간 데이터가 일정시간 쌓이면 하둡에게 보낸다.
+  - 스케쥴러는 플러그인(컴퓨터에 추가 프로그램을 설치하여 기능 수행이 가능하도록 하는 것)이 가능하다.
+  - 스케쥴러의 플러그인
+    - FIFO: first in first out 방식이며, 뒤따라오는 작업은 무한정 기다려야 한다는 단점이 있다. 기본 스케쥴링 방식으로 적용된다.
+    - Capacity: 사용할 작업 용량을 항상 보장할 수 있으며, 순환 작업 처리에 많이 사용된다.
+    - Fair: 모든 어플리케이션이 시간이 지남에 따라 자원을 평균적으로 균등하게 공유하는 방식이다.
+- Application Manager
+  - 제출된 다수의 어플리케이션의 유지를 책임진다.
+    - 어플리케이션에 필요한 모듈(자원, 작업 도구)을 쌓아놓는 곳이 컨테이너(창고)
+    - 파일이나 쿼리를 마스터노드에게 업로드한다.
+    - 앱을 실행하기 위한 컨테이너 초기화 설정 역할을 한다.
+    - 문제가 생겼을때 컨테이너의 재구성까지 책임진다.
+- 노드매니저는 노드들을 관리한다. (like 개인 매니저)
+- 노드의 작업 상태(바쁘고 한가한 정도, 자원 차지 정도 등)를 리소스매니저와 공유하고, 어플리케이션 컨테이너를 관리 감독(노드의 상태를 컨테이너로 관리)한다.
+- 노드가 정상적으로 살아있는 상태임을 마스터노드에게 알리기 위해 HeartBeat를 전송한다.
+- 하둡2에서는 job을 application이라고 부른다.
+- 어플리케이션 마스터는 리소스 매니저와 자원을 협상한다. 어플리케이션 마스터 입장에서는 가용 자원이 많을수록 좋고, 리소스 매니저는 적당한 자원을 제공해야 하기 때문에 서로 협의가 필요하다.
+
+## 동작 방식
+- 클라이언트로부터 어플리케이션 제출
+- 리소스 매니저의 어플리케이션 매니저가 이를 받아 최초의 어플리케이션 마스터를 위한 컨테이너 할당을 요청
+- 어플리케이션 마스터가 어플리케이션 실행을 위한 컨테이너를 스케쥴러에게 요청
+- 스케쥴러는 어플리케이션 실행을 스케쥴링하면서 노드의 자원 상태에 따라 컨테이너 할당
+- 워커노드에서 노드매니저가 컨테이너 생성 담당
+- 컨테이너는 리소스를 사용하여 어플리케이션 실행
+- 어플리케이션 마스터는 컨테이너 실행 상태를 모니터링 및 추적
+- 실행이 완료되면 어플리케이션 매니저에게 알림
