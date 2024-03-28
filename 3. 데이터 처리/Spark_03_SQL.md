@@ -47,7 +47,16 @@
   - RDD를 기반으로 만들어졌으며, RDD의 성질을 알고 있으면 더 최적화된 DF 사용이 가능하다.
   - RDD에 스키마가 적용된 것이라고 개념적으로 이해 가능하다.
 - RDD에 스키마를 정의한 다음 DataFrame으로 변형 가능하다.
-- csv, json 등의 데이터를 받아 DataFrame으로 만들어낼 수 있다.
+  - RDD를 이용해 DataFrame을 만드는 방법은 아래 두 가지이다.
+  - Schema를 자동으로 유추해서 DataFrame을 만들 수 있다.
+  - 개발자가 직접 Schema를 정의해서 DataFrame을 만들 수 있다.
+- text, csv, json 등의 데이터를 받아 DataFrame으로 만들어낼 수 있다.
+  - `spark.read.text` `spark.read.csv` `spark.read.json`
+- 데이터프레임을 마치 RDBMS의 테이블처럼 사용하기 위해서는 `createOrReplaceTempView()`함수를 이용해서 임시 뷰(temporary view)를 만들어줘야 한다.
+### Spark DataFrame의 강점
+- Spark DataFrame 사용 시 프로그래밍 문법 적용이 가능하다는 아주 큰 장점이 있다.
+- Spark Streaming의 경우 Spark DataFrame 밖에 사용 안되는 등, 다른 Spark 모듈과의 이식성이 뛰어나다.
+- 파티셔닝과 셔플링 등 최적화가 필요한 부분을 자동으로 수행해주기 때문에, 점차 RDD보다 Spark SQL을 지원하는 추세이다.
 
 ## SparkSession
 - Spark Core에 SparkContext가 있다면, Spark SQL에는 SparkSession이 있다.
