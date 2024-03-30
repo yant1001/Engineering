@@ -79,6 +79,7 @@
 ## Spark SQL 사용
 - DataFrame에 SQL을 사용할 수 있는 view를 만들어 준다.
   - `.createOrReplaceTempView('view_name')`
+  - Spark는 Lazy Evaluation이라 action 함수를 이전까지는 실행되지 않고 있는 상태이기 때문에, TempView(임시 뷰)를 만들어서 메모리에 두고 사용할 수 있도록 한다.
   - 쿼리를 적용하고 싶은 데이터프레임의 임시 뷰를 만들어 이용한다.
     1) 스파크 세션에서 `.createDataFrame()`으로 데이터를 생성한다.
        - `movies_sdf = spark.createDataFrame(data=movies, schema=movie_schema)`
