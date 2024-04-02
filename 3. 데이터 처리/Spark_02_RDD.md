@@ -141,7 +141,19 @@ count = pairs.reduceByKey(lambda a, b: a + b)
 - 디스크에 계속 데이터를 저장하고 불러오는 반복적인 작업 방식은 속도를 저하시킨다.
 - 메모리 내에서 task끼리 데이터를 교환하여 더 속도를 빠르게 한다. (인메모리 방식)
 - transformations는 지연 실행되기 때문에 메모리에 저장해 둘 수 있다.
-- `Cache()`, `Persist()`로 데이터를 메모리에 저장해두고 사용이 가능하다.
+- `cache()`, `Persist()`로 데이터를 메모리에 저장해두고 사용이 가능하다.
+  - `cache()` & `persist()`
+    - 두 가지는 같은 의미이다.
+    - RDD에서 transformations와 actions로 나뉘는 이유는, 메모리 때문이다. (상기 Lazy Execution 수행의 이유)
+    - 전처리 학습 등, 일반적으로 데이터를 다루는 task는 반복적인 작업을 수행하는 경우가 많다.
+    - 이때 디스크에 데이터를 저장하고 교환하는 방식은 속도가 저하될 수 있으므로 디스크에 저장할 필요가 없는 데이터는 RDD에 상주할 수 있도록 메모리에 놔두는게 캐시의 기능이다.
+    - 모든 RDD에 캐시를 사용하지 않고, 기준을 세워 사용해야 한다.
+  - Storage Level
+    - 캐시를 수행했을 때 RDD가 존재해야 하는 공간이다.
+    - 절대 디스크에 내려가지 않도록, RDD로 불러온 데이터를 메모리에만 상주시킨다.
+    - 일반적으로 Memory_Only, Memory_and_Dist를 사용한다.
+    - Cache는 정해진 레벨만 사용 가능한 default Storage Level(RDD: Memory_Only, DF: Memory_and_Dist)을, Persist는 모든 레벨을 사용 가능하다.
+
 
 
 # Cluster Topology
