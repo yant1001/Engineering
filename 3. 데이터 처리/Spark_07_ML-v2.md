@@ -8,6 +8,7 @@
      - `query =""" <SQL query> """`
      - `data_df = spark.sql(query)`
 2. Train/Test 분할
+  에라이~
 3. 파이프라인 정의
 4. OneHotEncoding Stage
 5. Standard Scaling Stage
